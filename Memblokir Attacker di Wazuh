@@ -1,0 +1,52 @@
+Memblokir Attacker di Wazuh
+
+Wazuh menyediakan fitur active-response, yaitu perintah yang digunakan untuk merespons secara otomatis terhadap serangan yang terdeteksi. 
+Pada kasus kali ini, fitur tersebut dimanfaatkan untuk mengantisipasi kemunculan multiple error 400 yang berasal dari satu alamat IP. 
+ini biasanya menandakan adanya aktivitas pemindaian (scanning), percobaan serangan XSS, atau directory traversal. 
+Deteksi terhadap aktivitas ini dilakukan menggunakan rules dengan ID 31151 dari Wazuh.
+
+- Daftar command active-response dapat dilihat pada /var/ossec/active-response/bin
+
+Konfigurasi Active-Response
+Pada use case ini, perintah yang digunakan adalah firewall-drop, 
+yang secara default telah tersedia dan terdefinisi di dalam file konfigurasi /var/ossec/etc/ossec.conf, khususnya pada bagian pengaturan active-response.
+
+<command>  
+   <name>firewall-drop</name>
+   <executable>firewall-drop</executable>
+   <timeout_allowed>yes</timeout_allowed>
+</command>
+
+Aksi firewall-drop berfungsi untuk memblokir sementara koneksi dari alamat IP yang terindikasi melakukan aktivitas mencurigakan atau berbahaya, 
+dengan menambahkan aturan ke dalam firewall sistem. Tujuannya adalah untuk mencegah potensi serangan lanjutan dari IP tersebut.
+
+<!-- Active response firewall-drop scanning -->
+<active-response>
+  <command>firewall-drop</command>
+  <location>all</location>
+  <rules_id>31151</rules_id>
+  <timeout>3600</timeout>
+</active-response>
+
+Note:
+1. ocation: all untuk memblokir IP di semua agent, local hanya di agent yang mendeteksi serangan.
+2. rules_id: Sesuaikan dengan ID rule alert Wazuh yang ingin ditanggapi.
+3. timeout: Durasi blokir dalam detik. Setelah waktu habis, blokir otomatis dihapus.
+
+- Jika timeout sudah terlewati, maka IP Address attacker bisa mengakses lagi.
+
+Restart wazuh-manager
+- systemctl restart wazuh-manager
+- Beberapa Rules Penting untuk Web Server yang Dapat Diblokir dengan firewall-drop
+ 1. 31103, 31164, 31165 – Percobaan SQL Injection
+ 2. 31104, 31153 – Serangan umum pada web (directory traversal)
+ 3. 31105, 31154 – Percobaan XSS
+ 4. 31106 – Serangan web yang menghasilkan respon 200
+ 5. 31109 – MSSQL Injection
+ 6. 31110 – Serangan terhadap PHP-CGI
+ 7. 31151 – Multiple error 400 (indikasi reconnaissance)
+ 8. 31161, 31162, 31163 – Multiple error 500 (indikasi reconnaissance)
+ 10. 31166–31169 – Serangan ShellShock
+
+
+
